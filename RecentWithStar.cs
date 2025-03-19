@@ -24,10 +24,9 @@ public class RecentWithStar : EditorWindow
         GetWindow<RecentWithStar>();
     }
 
-    private void Awake()
+    private void OnEnable()
     {
-        Selection.selectionChanged += HandleSelectionChanged;
-        SceneManager.sceneUnloaded += HandleSceneUnloaded;
+        LoadBookmarks();
         _reorderableStarredList = new ReorderableList(
             _starredItems,
             typeof(Object),
@@ -40,23 +39,16 @@ public class RecentWithStar : EditorWindow
             multiSelect = true,
             drawElementCallback = HandleDrawBookmarkElement
         };
-    }
-
-    private void OnDestroy()
-    {
-        Selection.selectionChanged -= HandleSelectionChanged;
-        SceneManager.sceneUnloaded -= HandleSceneUnloaded;
-        _reorderableStarredList = null;
-    }
-
-    private void OnEnable()
-    {
-        LoadBookmarks();
+        Selection.selectionChanged += HandleSelectionChanged;
+        SceneManager.sceneUnloaded += HandleSceneUnloaded;
     }
 
     private void OnDisable()
     {
         SaveBookmarks();
+        _reorderableStarredList = null;
+        Selection.selectionChanged -= HandleSelectionChanged;
+        SceneManager.sceneUnloaded -= HandleSceneUnloaded;
     }
 
     private void HandleSceneUnloaded(Scene scene)
@@ -66,7 +58,7 @@ public class RecentWithStar : EditorWindow
         {
             var obj = _selectionHistory[i];
             // Remove null references or scene objects that no longer exist
-            if (obj == null || (obj is Component component && component.gameObject.scene == scene))
+            if (!EditorUtility.IsPersistent(obj))
             {
                 _selectionHistory.RemoveAt(i);
                 // Adjust current index if needed
@@ -81,7 +73,7 @@ public class RecentWithStar : EditorWindow
         for (var i = _starredItems.Count - 1; i >= 0; i--)
         {
             var obj = _starredItems[i];
-            if (obj == null || (obj is Component component && component.gameObject.scene == scene))
+            if (!EditorUtility.IsPersistent(obj))
             {
                 _starredItems.RemoveAt(i);
             }
@@ -152,7 +144,7 @@ public class RecentWithStar : EditorWindow
         // bookmark list
         EditorGUILayout.BeginHorizontal();
         EditorGUILayout.LabelField("Starred Items", EditorStyles.boldLabel);
-        
+
         // if (GUILayout.Button("Save", GUILayout.Width(50)))
         // {
         //     SaveBookmarks();
@@ -164,7 +156,8 @@ public class RecentWithStar : EditorWindow
         }
 
         EditorGUILayout.EndHorizontal();
-        _reorderableStarredList.DoLayoutList();
+        _reorderableStarredList?.DoLayoutList(); // may be null when recompiling
+
         EditorGUILayout.Space();
 
         // history list
